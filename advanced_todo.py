@@ -1,25 +1,44 @@
 import json
 import os
+from typing import List, Dict, Union
 
-# File to store tasks
+# Configuration
 TASKS_FILE = "tasks.json"
+DEFAULT_ENCODING = "utf-8"
 
-def load_tasks():
+# Type aliases
+Task = Dict[str, Union[str, bool]]
+TaskList = List[Task]
+
+def load_tasks() -> TaskList:
     """Load tasks from file if it exists"""
-    if os.path.exists(TASKS_FILE):
-        try:
-            with open(TASKS_FILE, 'r') as file:
-                return json.load(file)
-        except (json.JSONDecodeError, FileNotFoundError):
-            return []
-    return []
+    try:
+        if os.path.exists(TASKS_FILE):
+            with open(TASKS_FILE, 'r', encoding=DEFAULT_ENCODING) as file:
+                tasks = json.load(file)
+                # Validate task structure
+                for task in tasks:
+                    if not isinstance(task, dict) or 'title' not in task or 'completed' not in task:
+                        print("❌ Warning: Corrupted task data found. Starting fresh.")
+                        return []
+                return tasks
+        return []  # Return empty list if file doesn't exist
+    except (json.JSONDecodeError, FileNotFoundError, IOError) as e:
+        print(f"❌ Error loading tasks: {str(e)}")
+        print("Starting with empty task list.")
+        return []
 
-def save_tasks(tasks):
+def save_tasks(tasks: TaskList) -> bool:
     """Save tasks to file"""
-    with open(TASKS_FILE, 'w') as file:
-        json.dump(tasks, file, indent=2)
+    try:
+        with open(TASKS_FILE, 'w', encoding=DEFAULT_ENCODING) as file:
+            json.dump(tasks, file, indent=2)
+        return True
+    except IOError as e:
+        print(f"❌ Error saving tasks: {str(e)}")
+        return False
 
-def display_menu():
+def display_menu() -> None:
     """Display the main menu"""
     print("\n" + "="*50)
     print("📝 ADVANCED TO-DO LIST APPLICATION")
@@ -34,7 +53,7 @@ def display_menu():
     print("8. Exit")
     print("="*50)
 
-def view_tasks(tasks, filter_type="all"):
+def view_tasks(tasks: TaskList, filter_type: str = "all") -> None:
     """View tasks based on filter type"""
     if not tasks:
         print("No tasks found.")
@@ -55,11 +74,12 @@ def view_tasks(tasks, filter_type="all"):
         print(f"No {filter_type} tasks found.")
         return
     
-    for index, task in enumerate(filtered_tasks, start=1):
+    task_map = [(i, task) for i, task in enumerate(tasks) if task in filtered_tasks]
+    for i, (orig_index, task) in enumerate(task_map, 1):
         status = "✅" if task["completed"] else "⏳"
-        print(f"{index}. {status} {task['title']}")
+        print(f"{i}. {status} {task['title']} (#{orig_index + 1})")
 
-def add_task(tasks):
+def add_task(tasks: TaskList) -> None:
     """Add a new task"""
     title = input("Enter task title: ").strip()
     if title:
@@ -68,39 +88,46 @@ def add_task(tasks):
             "completed": False
         }
         tasks.append(new_task)
-        save_tasks(tasks)
-        print(f"✅ Task added: {title}")
+        if save_tasks(tasks):
+            print(f"✅ Task added: {title}")
+        else:
+            tasks.pop()  # Remove task if save failed
+            print("❌ Failed to save task.")
     else:
         print("❌ Task title cannot be empty.")
 
-def mark_task_complete(tasks):
+def mark_task_complete(tasks: TaskList) -> None:
     """Mark a task as complete"""
-    pending_tasks = [task for task in tasks if not task["completed"]]
+    if not tasks:
+        print("No tasks found.")
+        return
+        
+    pending_tasks = [(i, task) for i, task in enumerate(tasks) if not task["completed"]]
     
     if not pending_tasks:
         print("No pending tasks to complete.")
         return
     
     print("\n⏳ PENDING TASKS:")
-    for index, task in enumerate(pending_tasks, start=1):
-        print(f"{index}. {task['title']}")
+    for i, (orig_index, task) in enumerate(pending_tasks, 1):
+        print(f"{i}. {task['title']} (#{orig_index + 1})")
     
     try:
         choice = int(input("Enter task number to mark as complete: ")) - 1
         if 0 <= choice < len(pending_tasks):
-            # Find the task in the main list and mark it complete
-            for task in tasks:
-                if task["title"] == pending_tasks[choice]["title"] and not task["completed"]:
-                    task["completed"] = True
-                    save_tasks(tasks)
-                    print(f"✅ Task completed: {task['title']}")
-                    break
+            task_index = pending_tasks[choice][0]
+            tasks[task_index]["completed"] = True
+            if save_tasks(tasks):
+                print(f"✅ Task completed: {tasks[task_index]['title']}")
+            else:
+                tasks[task_index]["completed"] = False
+                print("❌ Failed to save task status.")
         else:
             print("❌ Invalid task number.")
     except (ValueError, IndexError):
         print("❌ Invalid input. Please enter a valid number.")
 
-def delete_task(tasks):
+def delete_task(tasks: TaskList) -> None:
     """Delete a task"""
     if not tasks:
         print("No tasks to delete.")
@@ -111,14 +138,17 @@ def delete_task(tasks):
         choice = int(input("Enter task number to delete: ")) - 1
         if 0 <= choice < len(tasks):
             removed_task = tasks.pop(choice)
-            save_tasks(tasks)
-            print(f"🗑️ Task deleted: {removed_task['title']}")
+            if save_tasks(tasks):
+                print(f"🗑️ Task deleted: {removed_task['title']}")
+            else:
+                tasks.append(removed_task)  # Restore task if save failed
+                print("❌ Failed to delete task.")
         else:
             print("❌ Invalid task number.")
     except (ValueError, IndexError):
         print("❌ Invalid input. Please enter a valid number.")
 
-def clear_all_tasks(tasks):
+def clear_all_tasks(tasks: TaskList) -> None:
     """Clear all tasks"""
     if not tasks:
         print("No tasks to clear.")
@@ -126,13 +156,17 @@ def clear_all_tasks(tasks):
     
     confirm = input("Are you sure you want to delete all tasks? (y/N): ")
     if confirm.lower() == 'y':
+        old_tasks = tasks.copy()
         tasks.clear()
-        save_tasks(tasks)
-        print("🗑️ All tasks cleared.")
+        if save_tasks(tasks):
+            print("🗑️ All tasks cleared.")
+        else:
+            tasks.extend(old_tasks)  # Restore tasks if save failed
+            print("❌ Failed to clear tasks.")
     else:
         print("Operation cancelled.")
 
-def main():
+def main() -> None:
     """Main application loop"""
     print("Loading tasks...")
     tasks = load_tasks()
