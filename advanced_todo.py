@@ -19,12 +19,12 @@ def load_tasks() -> TaskList:
                 # Validate task structure
                 for task in tasks:
                     if not isinstance(task, dict) or 'title' not in task or 'completed' not in task:
-                        print("❌ Warning: Corrupted task data found. Starting fresh.")
+                        print("Warning: Corrupted task data found. Starting fresh.")
                         return []
                 return tasks
         return []  # Return empty list if file doesn't exist
     except (json.JSONDecodeError, FileNotFoundError, IOError) as e:
-        print(f"❌ Error loading tasks: {str(e)}")
+        print(f"Error loading tasks: {str(e)}")
         print("Starting with empty task list.")
         return []
 
@@ -35,13 +35,13 @@ def save_tasks(tasks: TaskList) -> bool:
             json.dump(tasks, file, indent=2)
         return True
     except IOError as e:
-        print(f"❌ Error saving tasks: {str(e)}")
+        print(f"Error saving tasks: {str(e)}")
         return False
 
 def display_menu() -> None:
     """Display the main menu"""
     print("\n" + "="*50)
-    print("📝 ADVANCED TO-DO LIST APPLICATION")
+    print("ADVANCED TO-DO LIST APPLICATION")
     print("="*50)
     print("1. View All Tasks")
     print("2. Add New Task")
@@ -62,13 +62,13 @@ def view_tasks(tasks: TaskList, filter_type: str = "all") -> None:
     filtered_tasks = []
     if filter_type == "completed":
         filtered_tasks = [task for task in tasks if task["completed"]]
-        print("\n✅ COMPLETED TASKS:")
+        print("\nCOMPLETED TASKS:")
     elif filter_type == "pending":
         filtered_tasks = [task for task in tasks if not task["completed"]]
-        print("\n⏳ PENDING TASKS:")
+        print("\nPENDING TASKS:")
     else:
         filtered_tasks = tasks
-        print("\n📋 ALL TASKS:")
+        print("\nALL TASKS:")
     
     if not filtered_tasks:
         print(f"No {filter_type} tasks found.")
@@ -76,7 +76,7 @@ def view_tasks(tasks: TaskList, filter_type: str = "all") -> None:
     
     task_map = [(i, task) for i, task in enumerate(tasks) if task in filtered_tasks]
     for i, (orig_index, task) in enumerate(task_map, 1):
-        status = "✅" if task["completed"] else "⏳"
+        status = "[Completed]" if task["completed"] else "[Pending]"
         print(f"{i}. {status} {task['title']} (#{orig_index + 1})")
 
 def add_task(tasks: TaskList) -> None:
@@ -89,12 +89,12 @@ def add_task(tasks: TaskList) -> None:
         }
         tasks.append(new_task)
         if save_tasks(tasks):
-            print(f"✅ Task added: {title}")
+            print(f"Task added: {title}")
         else:
             tasks.pop()  # Remove task if save failed
-            print("❌ Failed to save task.")
+            print("Failed to save task.")
     else:
-        print("❌ Task title cannot be empty.")
+        print("Task title cannot be empty.")
 
 def mark_task_complete(tasks: TaskList) -> None:
     """Mark a task as complete"""
@@ -108,7 +108,7 @@ def mark_task_complete(tasks: TaskList) -> None:
         print("No pending tasks to complete.")
         return
     
-    print("\n⏳ PENDING TASKS:")
+    print("\nPENDING TASKS:")
     for i, (orig_index, task) in enumerate(pending_tasks, 1):
         print(f"{i}. {task['title']} (#{orig_index + 1})")
     
@@ -118,14 +118,14 @@ def mark_task_complete(tasks: TaskList) -> None:
             task_index = pending_tasks[choice][0]
             tasks[task_index]["completed"] = True
             if save_tasks(tasks):
-                print(f"✅ Task completed: {tasks[task_index]['title']}")
+                print(f"Task completed: {tasks[task_index]['title']}")
             else:
                 tasks[task_index]["completed"] = False
-                print("❌ Failed to save task status.")
+                print("Failed to save task status.")
         else:
-            print("❌ Invalid task number.")
+            print("Invalid task number.")
     except (ValueError, IndexError):
-        print("❌ Invalid input. Please enter a valid number.")
+        print("Invalid input. Please enter a valid number.")
 
 def delete_task(tasks: TaskList) -> None:
     """Delete a task"""
@@ -139,14 +139,14 @@ def delete_task(tasks: TaskList) -> None:
         if 0 <= choice < len(tasks):
             removed_task = tasks.pop(choice)
             if save_tasks(tasks):
-                print(f"🗑️ Task deleted: {removed_task['title']}")
+                print(f"Task deleted: {removed_task['title']}")
             else:
                 tasks.append(removed_task)  # Restore task if save failed
-                print("❌ Failed to delete task.")
+                print("Failed to delete task.")
         else:
-            print("❌ Invalid task number.")
+            print("Invalid task number.")
     except (ValueError, IndexError):
-        print("❌ Invalid input. Please enter a valid number.")
+        print("Invalid input. Please enter a valid number.")
 
 def clear_all_tasks(tasks: TaskList) -> None:
     """Clear all tasks"""
@@ -159,10 +159,10 @@ def clear_all_tasks(tasks: TaskList) -> None:
         old_tasks = tasks.copy()
         tasks.clear()
         if save_tasks(tasks):
-            print("🗑️ All tasks cleared.")
+            print("All tasks cleared.")
         else:
             tasks.extend(old_tasks)  # Restore tasks if save failed
-            print("❌ Failed to clear tasks.")
+            print("Failed to clear tasks.")
     else:
         print("Operation cancelled.")
 
@@ -190,10 +190,10 @@ def main() -> None:
         elif choice == '7':
             clear_all_tasks(tasks)
         elif choice == '8':
-            print("👋 Goodbye! Thanks for using the To-Do List app!")
+            print("Goodbye! Thanks for using the To-Do List app!")
             break
         else:
-            print("❌ Invalid choice. Please select a number between 1-8.")
+            print("Invalid choice. Please select a number between 1-8.")
         
         input("\nPress Enter to continue...")
 

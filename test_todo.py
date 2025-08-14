@@ -53,7 +53,7 @@ def test_advanced_functionality():
     
     print("Sample tasks created:")
     for i, task in enumerate(sample_tasks, 1):
-        status = "✅" if task["completed"] else "⏳"
+        status = "Completed" if task["completed"] else "Pending"
         print(f"{i}. {status} {task['title']}")
     
     # Test filtering
